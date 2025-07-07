@@ -1,10 +1,6 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using SmartKnowledgeBot.Domain.Models;
 using SmartKnowledgeBot.Domain.Enums;
-using System.Collections.Generic;
-using System.Reflection.Emit;
-using System.Reflection.Metadata;
-using Document = SmartKnowledgeBot.Domain.Models.Document;
 
 namespace SmartKnowledgeBot.Infrastructure.Data
 {
@@ -65,42 +61,64 @@ namespace SmartKnowledgeBot.Infrastructure.Data
                 entity.Property(e => e.ConfidenceScore).HasColumnType("decimal(5,4)");
             });
 
-            // Configure Document entity
-            modelBuilder.Entity<Document>(entity =>
+            static void ConfigureRelationships(ModelBuilder modelBuilder)
             {
-                entity.HasIndex(e => e.Category);
-                entity.HasIndex(e => e.AccessLevel);
-                entity.HasIndex(e => new { e.Status, e.IsActive });
-                entity.HasIndex(e => e.UploadedAt);
-                entity.Property(e => e.ExtractedText).HasColumnType("nvarchar(max)");
-                entity.Property(e => e.ContentSummary).HasColumnType("nvarchar(max)");
+                // User -> KnowledgeQueries (One-to-Many)
+                modelBuilder.Entity<KnowledgeQuery>()
+                    .HasOne(q => q.User)
+                    .WithMany(u => u.Queries)
+                    .HasForeignKey(q => q.UserId)
+                    .OnDelete(DeleteBehavior.Restrict);
 
-                // Full-text search indexes
-                entity.HasIndex(e => e.FileName).HasDatabaseName("IX_Documents_FileName_FullText");
-                entity.HasIndex(e => e.ExtractedText).HasDatabaseName("IX_Documents_ExtractedText_FullText");
-            });
+                // KnowledgeQuery -> KnowledgeResponse (One-to-One)
+                modelBuilder.Entity<KnowledgeResponse>()
+                    .HasOne(r => r.Query)
+                    .WithOne(q => q.Response)
+                    .HasForeignKey<KnowledgeResponse>(r => r.QueryId)
+                    .OnDelete(DeleteBehavior.Cascade);
 
-            // Configure DocumentEmbedding entity
-            modelBuilder.Entity<DocumentEmbedding>(entity =>
-            {
-                entity.HasIndex(e => e.DocumentId);
-                entity.HasIndex(e => new { e.DocumentId, e.ChunkIndex });
-                entity.Property(e => e.TextChunk).HasColumnType("nvarchar(max)");
-                entity.Property(e => e.EmbeddingVector).HasColumnType("nvarchar(max)");
-            });
+                // User -> Documents (One-to-Many)
+                modelBuilder.Entity<Document>()
+                    .HasOne(d => d.UploadedByUser)
+                    .WithMany(u => u.UploadedDocuments)
+                    .HasForeignKey(d => d.UploadedBy)
+                    .OnDelete(DeleteBehavior.Restrict);
 
-            // Configure StructuredKnowledge entity
-            modelBuilder.Entity<StructuredKnowledge>(entity =>
-            {
-                entity.HasIndex(e => e.Category);
-                entity.HasIndex(e => e.AccessLevel);
-                entity.HasIndex(e => new { e.IsActive, e.Priority });
-                entity.Property(e => e.Answer).HasColumnType("nvarchar(max)");
+                // Document -> DocumentEmbeddings (One-to-Many)
+                modelBuilder.Entity<DocumentEmbedding>()
+                    .HasOne(e => e.Document)
+                    .WithMany(d => d.Embeddings)
+                    .HasForeignKey(e => e.DocumentId)
+                    .OnDelete(DeleteBehavior.Cascade);
 
-                // Full-text search on questions and keywords
-                entity.HasIndex(e => e.Question).HasDatabaseName("IX_StructuredKnowledge_Question_FullText");
-                entity.HasIndex(e => e.Keywords).HasDatabaseName("IX_StructuredKnowledge_Keywords_FullText");
-            });
+                // User -> RefreshTokens (One-to-Many)
+                modelBuilder.Entity<RefreshToken>()
+                    .HasOne(rt => rt.User)
+                    .WithMany(u => u.RefreshTokens)
+                    .HasForeignKey(rt => rt.UserId)
+                    .OnDelete(DeleteBehavior.Cascade);
+
+                // User -> QueryFeedbacks (One-to-Many)
+                modelBuilder.Entity<QueryFeedback>()
+                    .HasOne(f => f.User)
+                    .WithMany(u => u.Feedbacks)
+                    .HasForeignKey(f => f.UserId)
+                    .OnDelete(DeleteBehavior.Restrict);
+
+                // KnowledgeQuery -> QueryFeedbacks (One-to-Many)
+                modelBuilder.Entity<QueryFeedback>()
+                    .HasOne(f => f.Query)
+                    .WithMany(q => q.Feedbacks)
+                    .HasForeignKey(f => f.QueryId)
+                    .OnDelete(DeleteBehavior.Cascade);
+
+                // User -> StructuredKnowledge (One-to-Many)
+                modelBuilder.Entity<StructuredKnowledge>()
+                    .HasOne(sk => sk.CreatedByUser)
+                    .WithMany()
+                    .HasForeignKey(sk => sk.CreatedBy)
+                    .OnDelete(DeleteBehavior.Restrict);
+            }
 
             // Configure RefreshToken entity
             modelBuilder.Entity<RefreshToken>(entity =>

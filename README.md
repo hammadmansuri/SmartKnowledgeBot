@@ -80,7 +80,7 @@ SmartEnterpriseKnowledgeBot/
 
 1. **Clone the repository**
    ```bash
-   git clone https://github.com/yourusername/smart-enterprise-knowledge-bot.git
+   git clone https://github.com/hammadmansuri/SmartKnowledgeBot.git
    cd smart-enterprise-knowledge-bot
    ```
 
@@ -123,7 +123,7 @@ SmartEnterpriseKnowledgeBot/
    ```
 
 6. **Access the API**
-   - Swagger UI: `https://localhost:7001`
+   - Swagger UI: `https://localhost:7001, http://localhost:5000`
    - Health Check: `https://localhost:7001/health`
 
 ### Environment Variables (Production)
